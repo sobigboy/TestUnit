@@ -325,7 +325,7 @@ int recv_reply(int sock_fd, struct sockaddr* paddr_dest, unsigned char * recv_bu
 void add_result_to_list(SEARCH_RESULT_T **ppheader, SEARCH_RESULT_T *presult)
 {
 	//make sure presult is not null
-	assert(strlen(presult->mac) != 0);
+	assert(presult && strlen(presult->mac) != 0);
 
 	SEARCH_RESULT_T *new_node = (SEARCH_RESULT_T*)malloc(sizeof(SEARCH_RESULT_T));
 	memcpy(new_node, presult, sizeof(SEARCH_RESULT_T));
