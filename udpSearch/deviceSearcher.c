@@ -114,6 +114,9 @@ void convert_ip_to_bytes(const unsigned char* ip_string, unsigned char* ip_bytes
 
 void display_search_result(const SEARCH_RESULT_T *result)
 {
+	if(!result)
+		return;
+
 	if(result->next_result)
 	{
 		display_search_result(result->next_result);
@@ -132,6 +135,7 @@ void display_search_result(const SEARCH_RESULT_T *result)
 	printf("bit rate: \t%d\n", result->bit_rate);
 	printf("com flag: \t%d\n", result->com_flag);
 	printf("id: \t%d\n", result->id);
+	printf("next_result_pointer: \t0x%016llX\n", (unsigned long long)(result->next_result->mac));
 	printf("========search result end =========\n");
 
 }
@@ -288,7 +292,6 @@ void convert_conf_param(const DEVICE_CONF_PARAM_T *param, DEVICE_CONF_PARAM_RAW*
 	raw->work_mode = (unsigned char)param->work_mode;
 
 	// convert bitrate
-	//param->bit_rate = raw->bit_rate[0] + (raw->bit_rate[1]<<8) + (raw->bit_rate[2]<<16);
 	raw->bit_rate[0] = (unsigned char)param->bit_rate;
 	raw->bit_rate[1] = (unsigned char)(param->bit_rate >> 8);
 	raw->bit_rate[2] = (unsigned char)(param->bit_rate >> 16);
@@ -318,30 +321,56 @@ int recv_reply(int sock_fd, struct sockaddr* paddr_dest, unsigned char * recv_bu
 	return ret;
 }
 
+// add new node to list tail
+void add_result_to_list(SEARCH_RESULT_T **ppheader, SEARCH_RESULT_T *presult)
+{
+	//make sure presult is not null
+	assert(strlen(presult->mac) != 0);
+
+	SEARCH_RESULT_T *new_node = (SEARCH_RESULT_T*)malloc(sizeof(SEARCH_RESULT_T));
+	memcpy(new_node, presult, sizeof(SEARCH_RESULT_T));
+
+	if(NULL == *ppheader)
+	{
+		*ppheader = new_node;
+	}
+	else
+	{
+		SEARCH_RESULT_T *pit = *ppheader;
+
+		while(pit)
+		{
+			if(NULL == pit->next_result)
+			{
+				break;
+			}
+			
+			pit = pit->next_result;
+		}
+
+		assert(pit->next_result == NULL);
+		pit->next_result = new_node;
+
+	 }
+}
+
 int parse_search_result(const unsigned char *buf, int buf_len, SEARCH_RESULT_T **ppresult)
 {
-	//assert(*ppresult);
 	assert(buf_len % SEARCH_REPLY_LEN == 0 && buf_len != 0);
 
 	int ret = 0;
+	int results_cnt = buf_len / SEARCH_REPLY_LEN;
 
-////
-//待修改20160317
-////
-	//SEARCH_RESULT_T* first_result = (SEARCH_RESULT_T*)malloc(sizeof(SEARCH_RESULT_T));
-
-	for(int i = 0; i < buf_len / SEARCH_REPLY_LEN; i++)
+	for(int i = 0; i < results_cnt; i++)
 	{
 		SEARCH_RESULT_RAW reply = {0};
 		memcpy(&reply, buf + SEARCH_REPLY_LEN * i, SEARCH_REPLY_LEN);
-
-
-		SEARCH_RESULT_T *result = (SEARCH_RESULT_T*)malloc(sizeof(SEARCH_RESULT_T));
-		memset(result, 0, sizeof(SEARCH_RESULT_T));
-		
+	
 		//convert reply to result
-		convert_search_raw_result(&reply, result);
-		*ppresult = result;
+		SEARCH_RESULT_T result = {0};
+		convert_search_raw_result(&reply, &result);
+	
+		add_result_to_list(ppresult, &result);
 	}
 
 
@@ -443,12 +472,15 @@ int search_mrr_device(SEARCH_RESULT_T **ppresult_out)
 
 void safe_delete_search_result(SEARCH_RESULT_T* presult)
 {
+	if(!presult)
+		return;
+
 	if(presult->next_result)
 	{
 		safe_delete_search_result(presult->next_result);
 	}
 
-	free (presult);
+	free(presult);
 	presult = NULL;
 }
 
@@ -498,7 +530,6 @@ int configure_mrr_device(const char* mac, const char* dest_ip, int dest_port,
 	DEVICE_CONF_PARAM_T conf_param;
 	sprintf(conf_param.mac, "%s", mac);
 	sprintf(conf_param.password, "%s", DEFAULT_CONF_PASSWORD);
-
 	sprintf(conf_param.dest_ip, "%s", dest_ip);
 	sprintf(conf_param.local_ip, "%s", local_ip);
 	sprintf(conf_param.mask_ip, "%s", mask_ip);
@@ -506,6 +537,7 @@ int configure_mrr_device(const char* mac, const char* dest_ip, int dest_port,
 
 	conf_param.dest_port = dest_port;
 	conf_param.local_port = local_port;
+
 	conf_param.work_mode = 1;
 	conf_param.bit_rate = 9600;
 	conf_param.id = 0;
@@ -514,19 +546,19 @@ int configure_mrr_device(const char* mac, const char* dest_ip, int dest_port,
 	return configure_device(&conf_param);
 }
 
-/**
+/************************************
 *	usage
 *
 *	1. usage of search mrr device
 *	2. usage of configure mrr device
 *
-*/
+************************************/	
 int usage_search()
 {
 	int ret = 0;
 
 	//you must declare a pointer to SEARCH_RESULT_T firstly
-	SEARCH_RESULT_T * presult = NULL;
+	SEARCH_RESULT_T *presult = NULL;
 
 	//call search_mrr_device() to search, the result will be saved in struct presult
 	ret = search_mrr_device(&presult);
@@ -534,16 +566,20 @@ int usage_search()
 
 	/////////////////////////////////////////////////////////////////
 	//模拟搜索出多个设备
-	SEARCH_RESULT_T * result2 = (SEARCH_RESULT_T*)malloc(sizeof(SEARCH_RESULT_T));
-	memcpy(result2, presult, sizeof(SEARCH_RESULT_T));
-	result2->com_flag = 5;
+	SEARCH_RESULT_T result2 = {0};
+	memcpy(&result2, presult, sizeof(SEARCH_RESULT_T));
+	sprintf(result2.mac, "%s", "12-23-34-45-56-67");
+	result2.com_flag = 5;
+	result2.bit_rate = 11200;
+	add_result_to_list(&presult, &result2);
 
-	SEARCH_RESULT_T * result3 = (SEARCH_RESULT_T*)malloc(sizeof(SEARCH_RESULT_T));
-	memcpy(result3, presult, sizeof(SEARCH_RESULT_T));
-	result3->com_flag = 6;
+	SEARCH_RESULT_T result3 = {0};
+	memcpy(&result3, &result2, sizeof(SEARCH_RESULT_T));
+	result3.com_flag = 6;
+	result3.bit_rate = 9760;
+	add_result_to_list(&presult, &result3);
+	add_result_to_list(&presult, &result3);
 
-	presult->next_result = result2;
-	result2->next_result = result3;
 	/////////////////////////////////////////////////////////////////
 
 	//output the search result on screen
@@ -594,13 +630,15 @@ int usage_configure()
 int main()
 {
 	int ret = 0;
+	printf("start>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
 
-	// test search
-	//ret = usage_search();
+	//// uncommit this to test search
+	 ret = usage_search();
 
-	// test configure
-	ret = usage_configure();
+	//// uncommit this to test configure
+	// ret = usage_configure();
 
+	printf("end<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n");
 
 	return ret;
 }
