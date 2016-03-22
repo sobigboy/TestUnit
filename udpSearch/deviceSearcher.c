@@ -302,11 +302,10 @@ void convert_conf_param(const DEVICE_CONF_PARAM_T *param, DEVICE_CONF_PARAM_RAW*
 	raw->id[2] = (unsigned char)(param->id >> 16);
 }
 
-int send_search_cmd(int sock_fd, struct sockaddr* paddr_dest)
+int send_boardcast_cmd(int sock_fd, const struct sockaddr* paddr_dest, const unsigned char* cmd, int cmd_length)
 {
 	int ret = -1;
-	unsigned char cmd[] = {"0123456789012345678901234567890123456789"};
-	ret=sendto(sock_fd, cmd, strlen((char*)cmd), 0, paddr_dest, sizeof(struct sockaddr));
+	ret=sendto(sock_fd, cmd, cmd_length, 0, paddr_dest, sizeof(struct sockaddr));
 
 	return ret;
 }
@@ -403,9 +402,11 @@ int search_mrr_device(SEARCH_RESULT_T **ppresult_out)
 
 	int sock = create_udp_socket();
 
-	//从广播地址发送消息
+	//从广播地址发送搜索指令
 	int recv_len = 0;
-	int ret = send_search_cmd(sock, (struct sockaddr*)&addr_dest);
+	unsigned char cmd[] = {"0123456789012345678901234567890123456789"};
+
+	int ret = send_boardcast_cmd(sock, (struct sockaddr*)&addr_dest, cmd, strlen((char*)cmd));
 	if(ret<0)
 	{
 		printf("send search cmd error....\n");
@@ -453,12 +454,40 @@ void safe_delete_search_result(SEARCH_RESULT_T* presult)
 
 int configure_device(const DEVICE_CONF_PARAM_T *conf_param)
 {
-	int ret;
-
 	DEVICE_CONF_PARAM_RAW raw_data;
 	convert_conf_param(conf_param, &raw_data);
 
+	//display on screen
 	display_configure_param(&raw_data);
+
+	//save to buffer
+	unsigned char* pcmdbuffer = (unsigned char*)malloc(sizeof(DEVICE_CONF_PARAM_RAW));
+	memcpy(pcmdbuffer, &raw_data, sizeof(DEVICE_CONF_PARAM_RAW));
+
+	//create udp socket
+	struct sockaddr_in addr_dest;
+	bzero(&addr_dest, sizeof(struct sockaddr_in));
+	addr_dest.sin_family=AF_INET;
+	addr_dest.sin_addr.s_addr=htonl(INADDR_BROADCAST);
+	addr_dest.sin_port=htons(DEST_PORT);
+
+	int sock = create_udp_socket();
+
+	//从广播地址发送配置指令
+	int ret = send_boardcast_cmd(sock, (struct sockaddr*)&addr_dest, pcmdbuffer, sizeof(DEVICE_CONF_PARAM_RAW));
+	if(ret<0)
+	{
+		printf("send configure cmd error....\n");
+		return -1;
+	}
+	else
+	{		
+		printf("send configure cmd ok!\n");	
+	}
+
+	close_udp_socket(sock);
+	free (pcmdbuffer);
+	pcmdbuffer = NULL;
 
 	return ret;
 }
@@ -552,7 +581,7 @@ int usage_configure()
 */
 
 	// configure method 2 : main method
-	ret = configure_mrr_device("12-EF-df-67-98-BE",
+	ret = configure_mrr_device("00-38-AF-94-47-22",
 		"192.168.200.141", 20108,
 		"192.168.28.253", 20108,
 		"255.255.255.0",
