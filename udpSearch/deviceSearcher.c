@@ -485,7 +485,13 @@ int configure_mrr_device(const char* mac, const char* dest_ip, int dest_port,
 	return configure_device(&conf_param);
 }
 
-//usage
+/**
+*	usage
+*
+*	1. usage of search mrr device
+*	2. usage of configure mrr device
+*
+*/
 int usage_search()
 {
 	int ret = 0;
@@ -524,6 +530,7 @@ int usage_configure()
 {
 	int ret = 0;
 
+	// configure method  1
 /*
 	DEVICE_CONF_PARAM_T conf_param;
 
@@ -541,10 +548,10 @@ int usage_configure()
 	conf_param.bit_rate = 9600;
 	conf_param.id = 201022;
 	conf_param.com_flag = 3;
-	ret = configure_mrr_device(&conf_param);
+	ret = configure_device(&conf_param);
 */
 
-
+	// configure method 2 : main method
 	ret = configure_mrr_device("12-EF-df-67-98-BE",
 		"192.168.200.141", 20108,
 		"192.168.28.253", 20108,
