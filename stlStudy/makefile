@@ -8,4 +8,4 @@ build :
 	mkdir ../build/
 
 clean :
-	rm ../build/firstSTL.o -o ../build/firstSTL
+	rm ../build/firstSTL.o ../build/firstSTL
