@@ -1,8 +1,12 @@
 deviceSearcher : deviceSearcher.o
-	gcc deviceSearcher.o -o deviceSearcher
+	gcc  ../build/deviceSearcher.o -o ../build/deviceSearcher
 
 deviceSearcher.o : deviceSearcher.c
-	gcc -c deviceSearcher.c -o deviceSearcher.o
+	gcc -c deviceSearcher.c -o ../build/deviceSearcher.o
+
+build :
+	mkdir ../build/
 
 clean :
-	rm deviceSearcher.o deviceSearcher
+	#rm ../build/deviceSearcher.o ../build/deviceSearcher
+	rm -rf ../build

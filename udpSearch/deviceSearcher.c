@@ -9,6 +9,7 @@
 #include <string.h>
 #include <assert.h>
 
+#include "deviceSearcher.h"
 
 #define DEST_PORT 	(1500)
 #define LOCAL_PORT 	(1500)
@@ -36,23 +37,6 @@ typedef struct _search_result_raw
 	unsigned char id[3];		
 	unsigned char mask_ip[4];
 }SEARCH_RESULT_RAW;
-
-typedef struct _search_result_t
-{
-	char mac[MAX_MACSTRING_LEN];
-	char version[4];
-	char dest_ip[MAX_IPSTRING_LEN];
-	char local_ip[MAX_IPSTRING_LEN];
-	char gateway[MAX_IPSTRING_LEN];
-	char mask_ip[MAX_IPSTRING_LEN];
-	unsigned short dest_port;
-	unsigned short local_port;
-	unsigned short work_mode;
-	unsigned int bit_rate;
-	unsigned short com_flag;
-	unsigned int id;
-	struct _search_result_t * next_result;
-}SEARCH_RESULT_T;
 
 
 typedef struct _device_conf_param_raw
@@ -566,6 +550,7 @@ int usage_search()
 
 	/////////////////////////////////////////////////////////////////
 	//模拟搜索出多个设备
+	/*
 	SEARCH_RESULT_T result2 = {0};
 	memcpy(&result2, presult, sizeof(SEARCH_RESULT_T));
 	sprintf(result2.mac, "%s", "12-23-34-45-56-67");
@@ -579,7 +564,7 @@ int usage_search()
 	result3.bit_rate = 9760;
 	add_result_to_list(&presult, &result3);
 	add_result_to_list(&presult, &result3);
-
+	*/
 	/////////////////////////////////////////////////////////////////
 
 	//output the search result on screen
@@ -616,7 +601,7 @@ int usage_configure()
 	ret = configure_device(&conf_param);
 */
 
-	// configure method 2 : main method
+	// configure method 2 : public method
 	ret = configure_mrr_device("00-38-AF-94-47-22",
 		"192.168.200.141", 20108,
 		"192.168.28.253", 20108,
