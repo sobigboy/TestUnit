@@ -7,6 +7,5 @@ firstSTL.o : firstSTL.cpp
 build :
 	mkdir ../build/
 
-
 clean :
 	rm ../build/firstSTL.o -o ../build/firstSTL
