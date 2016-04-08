@@ -300,7 +300,9 @@ int send_boardcast_cmd(int sock_fd, const struct sockaddr* paddr_dest, const uns
 int recv_reply(int sock_fd, struct sockaddr* paddr_dest, unsigned char * recv_buf)
 {
 	int ret = 0;
-	ret = recvfrom(sock_fd, recv_buf, MAX_BUFFER_LEN, 0, paddr_dest, (socklen_t*)&ret);
+
+	int fromlen = sizeof(struct sockaddr);
+	ret = recvfrom(sock_fd, recv_buf, MAX_BUFFER_LEN, 0, paddr_dest, (socklen_t*)&fromlen);
 
 	return ret;
 }
